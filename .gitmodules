@@ -1,0 +1,3 @@
+[submodule "ViettelSMS_ServerService"]
+	path = ViettelSMS_ServerService
+	url = https://github.com/th1enq/ViettelSMS_ServerService
