@@ -1,23 +1,157 @@
-version: '3.8'
-
 services:
-  # PostgreSQL Database
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.grpc.address=:9090"
+      - "--accesslog=true"
+      - "--log.level=DEBUG"
+    ports:
+      - "80:80"
+      - "9090:9090"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - webnet
+  gprc-gateway:
+    build:
+      context: ../ViettelSMS_Grpc_Gateway
+      dockerfile: Dockerfile
+    container_name: vcs_sms_grpc_gateway
+    depends_on:
+      - user-service
+      - server-service
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./logs/grpc_gateway:/app/logs
+    networks:
+      - webnet
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grpc-gateway.rule=Host(`localhost`) && PathPrefix(`/api/v1`)"
+      - "traefik.http.routers.grpc-gateway.entrypoints=web"
+      - "traefik.http.routers.grpc-gateway.service=grpc-gateway"
+      - "traefik.http.services.grpc-gateway.loadbalancer.server.port=8080"
+  user-service:
+    build:
+      context: ../ViettelSMS_UserService
+      dockerfile: Dockerfile
+    container_name: vcs_sms_userservice
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./logs/userservice:/app/logs
+    networks:
+      - webnet
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 50052 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.user-service-grpc.rule=Host(`localhost`) && Header(`Content-Type`, `application/grpc`)"
+      - "traefik.http.routers.user-service-grpc.entrypoints=web"
+      - "traefik.http.routers.user-service-grpc.service=user-service-grpc"
+      - "traefik.http.services.user-service-grpc.loadbalancer.server.port=50052"
+      - "traefik.http.services.user-service-grpc.loadbalancer.server.scheme=h2c"
+  server-service:
+    build:
+      context: ../ViettelSMS_ServerService
+      dockerfile: Dockerfile
+    container_name: vcs_sms_serverservice
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./logs/serverservice:/app/logs
+    networks:
+      - webnet
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 50053 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.server-service-grpc.rule=Host(`localhost`) && Header(`Content-Type`, `application/grpc`)"
+      - "traefik.http.routers.server-service-grpc.entrypoints=web"
+      - "traefik.http.routers.server-service-grpc.service=server-service-grpc"
+      - "traefik.http.services.server-service-grpc.loadbalancer.server.port=50053"
+      - "traefik.http.services.server-service-grpc.loadbalancer.server.scheme=h2c"
+  swagger-user-service-ui:
+    image: swaggerapi/swagger-ui
+    container_name: swagger-user-ui
+    ports:
+      - "8082:8080"
+    volumes:
+      - ../ViettelSMS_UserService/api/gen/swagger/user_service/v1:/docs:ro
+    environment:
+      SWAGGER_JSON: /docs/user_service.swagger.json
+      BASE_URL: /swagger/user
+    networks:
+      - webnet
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.swagger-user.rule=Host(`localhost`) && PathPrefix(`/swagger/user`)"
+      - "traefik.http.routers.swagger-user.entrypoints=web"
+      - "traefik.http.services.swagger-user.loadbalancer.server.port=8080"
+  swagger-server-service-ui:
+    image: swaggerapi/swagger-ui
+    container_name: swagger-server-ui
+    ports:
+      - "8083:8080"
+    volumes:
+      - ../ViettelSMS_ServerService/api/gen/swagger/server_service/v1:/docs:ro
+    environment:
+      SWAGGER_JSON: /docs/server_service.swagger.json
+      BASE_URL: /swagger/server
+    networks:
+      - webnet
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.swagger-server.rule=Host(`localhost`) && PathPrefix(`/swagger/server`)"
+      - "traefik.http.routers.swagger-server.entrypoints=web"
+      - "traefik.http.services.swagger-server.loadbalancer.server.port=8080"
   postgres:
-    image: postgres:15-alpine
-    container_name: vcs_sms_postgres
+    image: postgres:latest
+    container_name: postgres  
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: vcs_sms
     ports:
-      - "5432:5432"
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - webnet
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+networks:
+  webnet:
+    driver: bridge
 
 volumes:
   postgres_data:
