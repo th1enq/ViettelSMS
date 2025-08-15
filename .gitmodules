@@ -2,10 +2,6 @@
 	path = ViettelSMS_ServerService
 	url = https://github.com/th1enq/ViettelSMS_ServerService
 
-[submodule "ViettelSMS_UserService"]
-	path = ViettelSMS_UserService
-	url = https://github.com/th1enq/ViettelSMS_UserService
-
-[submodule "ViettelSMS_Gateway"]
-	path = ViettelSMS_Gateway
-	url = https://github.com/th1enq/ViettelSMS_Gateway
+[submodule "ViettelSMS_MonitoringService"]
+	path = ViettelSMS_MonitoringService
+	url = https://github.com/th1enq/ViettelSMS_MonitoringService

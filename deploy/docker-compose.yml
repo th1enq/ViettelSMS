@@ -18,59 +18,6 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
     networks:
       - webnet
-  gprc-gateway:
-    build:
-      context: ../ViettelSMS_Grpc_Gateway
-      dockerfile: Dockerfile
-    container_name: vcs_sms_grpc_gateway
-    depends_on:
-      - user-service
-      - server-service
-    ports:
-      - "8081:8080"
-    volumes:
-      - ./logs/grpc_gateway:/app/logs
-    networks:
-      - webnet
-    healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.grpc-gateway.rule=Host(`localhost`) && PathPrefix(`/api/v1`)"
-      - "traefik.http.routers.grpc-gateway.entrypoints=web"
-      - "traefik.http.routers.grpc-gateway.service=grpc-gateway"
-      - "traefik.http.services.grpc-gateway.loadbalancer.server.port=8080"
-  user-service:
-    build:
-      context: ../ViettelSMS_UserService
-      dockerfile: Dockerfile
-    container_name: vcs_sms_userservice
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - ./logs/userservice:/app/logs
-    networks:
-      - webnet
-    healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 50052 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.user-service-grpc.rule=Host(`localhost`) && Header(`Content-Type`, `application/grpc`)"
-      - "traefik.http.routers.user-service-grpc.entrypoints=web"
-      - "traefik.http.routers.user-service-grpc.service=user-service-grpc"
-      - "traefik.http.services.user-service-grpc.loadbalancer.server.port=50052"
-      - "traefik.http.services.user-service-grpc.loadbalancer.server.scheme=h2c"
   server-service:
     build:
       context: ../ViettelSMS_ServerService
@@ -80,11 +27,11 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./logs/serverservice:/app/logs
+      - ../ViettelSMS_ServerService/logs:/app/logs
     networks:
       - webnet
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 50053 || exit 1"]
+      test: ["CMD-SHELL", "nc -z localhost 8081 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -92,37 +39,70 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.server-service-grpc.rule=Host(`localhost`) && Header(`Content-Type`, `application/grpc`)"
-      - "traefik.http.routers.server-service-grpc.entrypoints=web"
-      - "traefik.http.routers.server-service-grpc.service=server-service-grpc"
-      - "traefik.http.services.server-service-grpc.loadbalancer.server.port=50053"
-      - "traefik.http.services.server-service-grpc.loadbalancer.server.scheme=h2c"
-  swagger-user-service-ui:
-    image: swaggerapi/swagger-ui
-    container_name: swagger-user-ui
-    ports:
-      - "8082:8080"
+      
+      # REST Router
+      - "traefik.http.routers.server-service-rest.rule=Host(`localhost`) && PathPrefix(`/api/v1/server`)"
+      - "traefik.http.routers.server-service-rest.entrypoints=web"
+      - "traefik.http.routers.server-service-rest.service=server-service-rest"
+      - "traefik.http.routers.server-service-rest.middlewares=cors-server-service-rest"
+      
+      # Service configuration
+      - "traefik.http.services.server-service-rest.loadbalancer.server.port=8081"
+
+      # Remove the strip prefix middleware - not needed since server expects /api/v1/server paths
+
+      # CORS middleware
+      - "traefik.http.middlewares.cors-server-service-rest.headers.accesscontrolalloworiginlist=*"
+      - "traefik.http.middlewares.cors-server-service-rest.headers.accesscontrolallowmethods=GET,POST,OPTIONS,PUT,DELETE"
+      - "traefik.http.middlewares.cors-server-service-rest.headers.accesscontrolallowheaders=Authorization,Content-Type"
+      - "traefik.http.middlewares.cors-server-service-rest.headers.addvaryheader=true"
+  monitoring-service:
+    build:
+      context: ../ViettelSMS_MonitoringService
+      dockerfile: Dockerfile
+    container_name: vcs_sms_monitoring_service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
     volumes:
-      - ../ViettelSMS_UserService/api/gen/swagger/user_service/v1:/docs:ro
-    environment:
-      SWAGGER_JSON: /docs/user_service.swagger.json
-      BASE_URL: /swagger/user
+      - ../ViettelSMS_MonitoringService/logs:/root/logs
     networks:
       - webnet
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 8083 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.swagger-user.rule=Host(`localhost`) && PathPrefix(`/swagger/user`)"
-      - "traefik.http.routers.swagger-user.entrypoints=web"
-      - "traefik.http.services.swagger-user.loadbalancer.server.port=8080"
+      
+      # REST Router
+      - "traefik.http.routers.monitoring-service-rest.rule=Host(`localhost`) && PathPrefix(`/api/v1/monitoring`)"
+      - "traefik.http.routers.monitoring-service-rest.entrypoints=web"
+      - "traefik.http.routers.monitoring-service-rest.service=monitoring-service-rest"
+      - "traefik.http.routers.monitoring-service-rest.middlewares=cors-monitoring-service-rest"
+
+      # Service configuration
+      - "traefik.http.services.monitoring-service-rest.loadbalancer.server.port=8083"
+
+      # CORS middleware
+      - "traefik.http.middlewares.cors-monitoring-service-rest.headers.accesscontrolalloworiginlist=*"
+      - "traefik.http.middlewares.cors-monitoring-service-rest.headers.accesscontrolallowmethods=GET,POST,OPTIONS,PUT,DELETE"
+      - "traefik.http.middlewares.cors-monitoring-service-rest.headers.accesscontrolallowheaders=Authorization,Content-Type"
+      - "traefik.http.middlewares.cors-monitoring-service-rest.headers.addvaryheader=true"
   swagger-server-service-ui:
     image: swaggerapi/swagger-ui
     container_name: swagger-server-ui
     ports:
-      - "8083:8080"
+      - "8082:8080"
     volumes:
-      - ../ViettelSMS_ServerService/api/gen/swagger/server_service/v1:/docs:ro
+      - ../ViettelSMS_ServerService/docs:/docs:ro
     environment:
-      SWAGGER_JSON: /docs/server_service.swagger.json
+      SWAGGER_JSON: /docs/swagger.yaml
       BASE_URL: /swagger/server
     networks:
       - webnet
@@ -131,6 +111,23 @@ services:
       - "traefik.http.routers.swagger-server.rule=Host(`localhost`) && PathPrefix(`/swagger/server`)"
       - "traefik.http.routers.swagger-server.entrypoints=web"
       - "traefik.http.services.swagger-server.loadbalancer.server.port=8080"
+  swagger-monitoring-service-ui:
+    image: swaggerapi/swagger-ui
+    container_name: swagger-monitoring-ui
+    ports:
+      - "8084:8080"
+    volumes:
+      - ../ViettelSMS_MonitoringService/docs:/docs:ro
+    environment:
+      SWAGGER_JSON: /docs/swagger.yaml
+      BASE_URL: /swagger/monitoring
+    networks:
+      - webnet
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.swagger-monitoring-ui.rule=Host(`localhost`) && PathPrefix(`/swagger/monitoring`)"
+      - "traefik.http.routers.swagger-monitoring-ui.entrypoints=web"
+      - "traefik.http.services.swagger-monitoring-ui.loadbalancer.server.port=8080"
   postgres:
     image: postgres:latest
     container_name: postgres  
@@ -149,9 +146,42 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: adm-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - webnet
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: adm-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 1
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server kafka:9092 --list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - webnet
 networks:
   webnet:
     driver: bridge
 
 volumes:
   postgres_data:
+  
