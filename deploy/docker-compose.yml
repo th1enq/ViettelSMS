@@ -23,6 +23,8 @@ services:
       context: ../ViettelSMS_ServerService
       dockerfile: Dockerfile
     container_name: vcs_sms_serverservice
+    env_file:
+      - ../.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,6 +63,8 @@ services:
       context: ../ViettelSMS_MonitoringService
       dockerfile: Dockerfile
     container_name: vcs_sms_monitoring_service
+    env_file:
+      - ../.env
     depends_on:
       redis:
         condition: service_healthy
