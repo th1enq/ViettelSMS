@@ -43,7 +43,7 @@ services:
       - "traefik.enable=true"
       
       # REST Router
-      - "traefik.http.routers.server-service-rest.rule=Host(`localhost`) && PathPrefix(`/api/v1/server`)"
+      - "traefik.http.routers.server-service-rest.rule=PathPrefix(`/api/v1/server`)"
       - "traefik.http.routers.server-service-rest.entrypoints=web"
       - "traefik.http.routers.server-service-rest.service=server-service-rest"
       - "traefik.http.routers.server-service-rest.middlewares=cors-server-service-rest"
@@ -58,11 +58,11 @@ services:
       - "traefik.http.middlewares.cors-server-service-rest.headers.accesscontrolallowmethods=GET,POST,OPTIONS,PUT,DELETE"
       - "traefik.http.middlewares.cors-server-service-rest.headers.accesscontrolallowheaders=Authorization,Content-Type"
       - "traefik.http.middlewares.cors-server-service-rest.headers.addvaryheader=true"
-  monitoring-service:
+  health-check-service:
     build:
-      context: ../ViettelSMS_MonitoringService
+      context: ../ViettelSMS_HealthCheckService
       dockerfile: Dockerfile
-    container_name: vcs_sms_monitoring_service
+    container_name: vcs_sms_health_check_service
     env_file:
       - ../.env
     depends_on:
@@ -70,8 +70,10 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
     volumes:
-      - ../ViettelSMS_MonitoringService/logs:/root/logs
+      - ../ViettelSMS_HealthCheckService/logs:/root/logs
     networks:
       - webnet
     healthcheck:
@@ -85,24 +87,60 @@ services:
       - "traefik.enable=true"
       
       # REST Router
-      - "traefik.http.routers.monitoring-service-rest.rule=Host(`localhost`) && PathPrefix(`/api/v1/monitoring`)"
-      - "traefik.http.routers.monitoring-service-rest.entrypoints=web"
-      - "traefik.http.routers.monitoring-service-rest.service=monitoring-service-rest"
-      - "traefik.http.routers.monitoring-service-rest.middlewares=cors-monitoring-service-rest"
+      - "traefik.http.routers.health-check-service-rest.rule=PathPrefix(`/api/v1/monitoring`)"
+      - "traefik.http.routers.health-check-service-rest.entrypoints=web"
+      - "traefik.http.routers.health-check-service-rest.service=health-check-service-rest"
+      - "traefik.http.routers.health-check-service-rest.middlewares=cors-health-check-service-rest"
 
       # Service configuration
-      - "traefik.http.services.monitoring-service-rest.loadbalancer.server.port=8083"
+      - "traefik.http.services.health-check-service-rest.loadbalancer.server.port=8083"
 
       # CORS middleware
-      - "traefik.http.middlewares.cors-monitoring-service-rest.headers.accesscontrolalloworiginlist=*"
-      - "traefik.http.middlewares.cors-monitoring-service-rest.headers.accesscontrolallowmethods=GET,POST,OPTIONS,PUT,DELETE"
-      - "traefik.http.middlewares.cors-monitoring-service-rest.headers.accesscontrolallowheaders=Authorization,Content-Type"
-      - "traefik.http.middlewares.cors-monitoring-service-rest.headers.addvaryheader=true"
+      - "traefik.http.middlewares.cors-health-check-service-rest.headers.accesscontrolalloworiginlist=*"
+      - "traefik.http.middlewares.cors-health-check-service-rest.headers.accesscontrolallowmethods=GET,POST,OPTIONS,PUT,DELETE"
+      - "traefik.http.middlewares.cors-health-check-service-rest.headers.accesscontrolallowheaders=Authorization,Content-Type"
+      - "traefik.http.middlewares.cors-health-check-service-rest.headers.addvaryheader=true"
+  report-service:
+    build:
+      context: ../ViettelSMS_ReportService
+      dockerfile: Dockerfile
+    container_name: vcs_sms_report_service
+    env_file:
+      - ../.env
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ../ViettelSMS_ReportService/logs:/root/logs
+    networks:
+      - webnet
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 8084 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      
+      # REST Router
+      - "traefik.http.routers.report-service-rest.rule=PathPrefix(`/api/v1/report`)"
+      - "traefik.http.routers.report-service-rest.entrypoints=web"
+      - "traefik.http.routers.report-service-rest.service=report-service-rest"
+      - "traefik.http.routers.report-service-rest.middlewares=cors-report-service-rest"
+
+      # Service configuration
+      - "traefik.http.services.report-service-rest.loadbalancer.server.port=8084"
+
+      # CORS middleware
+      - "traefik.http.middlewares.cors-report-service-rest.headers.accesscontrolalloworiginlist=*"
+      - "traefik.http.middlewares.cors-report-service-rest.headers.accesscontrolallowmethods=GET,POST,OPTIONS,PUT,DELETE"
+      - "traefik.http.middlewares.cors-report-service-rest.headers.accesscontrolallowheaders=Authorization,Content-Type"
+      - "traefik.http.middlewares.cors-report-service-rest.headers.addvaryheader=true"
   swagger-server-service-ui:
     image: swaggerapi/swagger-ui
     container_name: swagger-server-ui
-    ports:
-      - "8082:8080"
     volumes:
       - ../ViettelSMS_ServerService/docs:/docs:ro
     environment:
@@ -115,23 +153,36 @@ services:
       - "traefik.http.routers.swagger-server.rule=Host(`localhost`) && PathPrefix(`/swagger/server`)"
       - "traefik.http.routers.swagger-server.entrypoints=web"
       - "traefik.http.services.swagger-server.loadbalancer.server.port=8080"
-  swagger-monitoring-service-ui:
+  swagger-healthcheck-service-ui:
     image: swaggerapi/swagger-ui
-    container_name: swagger-monitoring-ui
-    ports:
-      - "8084:8080"
+    container_name: swagger-healthcheck-ui
     volumes:
-      - ../ViettelSMS_MonitoringService/docs:/docs:ro
+      - ../ViettelSMS_HealthCheckService/docs:/docs:ro
     environment:
       SWAGGER_JSON: /docs/swagger.yaml
-      BASE_URL: /swagger/monitoring
+      BASE_URL: /swagger/healthcheck
     networks:
       - webnet
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.swagger-monitoring-ui.rule=Host(`localhost`) && PathPrefix(`/swagger/monitoring`)"
-      - "traefik.http.routers.swagger-monitoring-ui.entrypoints=web"
-      - "traefik.http.services.swagger-monitoring-ui.loadbalancer.server.port=8080"
+      - "traefik.http.routers.swagger-healthcheck-ui.rule=Host(`localhost`) && PathPrefix(`/swagger/monitoring`)"
+      - "traefik.http.routers.swagger-healthcheck-ui.entrypoints=web"
+      - "traefik.http.services.swagger-healthcheck-ui.loadbalancer.server.port=8080"
+  swagger-report-service-ui:
+    image: swaggerapi/swagger-ui
+    container_name: swagger-report-ui
+    volumes:
+      - ../ViettelSMS_ReportService/docs:/docs:ro
+    environment:
+      SWAGGER_JSON: /docs/swagger.yaml
+      BASE_URL: /swagger/report
+    networks:
+      - webnet
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.swagger-report-ui.rule=Host(`localhost`) && PathPrefix(`/swagger/report`)"
+      - "traefik.http.routers.swagger-report-ui.entrypoints=web"
+      - "traefik.http.services.swagger-report-ui.loadbalancer.server.port=8080"
   postgres:
     image: postgres:latest
     container_name: postgres  
@@ -167,7 +218,7 @@ services:
       - webnet
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
-    container_name: adm-zookeeper
+    container_name: zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -176,7 +227,7 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.6.1
-    container_name: adm-kafka
+    container_name: kafka
     depends_on:
       - zookeeper
     ports:
@@ -184,9 +235,9 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_NUM_PARTITIONS: 1
@@ -197,6 +248,40 @@ services:
       retries: 5
     networks:
       - webnet
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.0.2
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - webnet
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.0.2
+    container_name: vcs_sms_kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - webnet
 networks:
   webnet:
     driver: bridge
@@ -204,4 +289,5 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  elasticsearch_data:
   
