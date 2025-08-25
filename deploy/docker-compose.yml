@@ -26,14 +26,14 @@ services:
     env_file:
       - ../.env
     depends_on:
+      kafka:
+        condition: service_healthy
       postgres:
         condition: service_healthy
-    volumes:
-      - ../ViettelSMS_ServerService/logs:/app/logs
     networks:
       - webnet
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 8081 || exit 1"]
+      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -49,7 +49,7 @@ services:
       - "traefik.http.routers.server-service-rest.middlewares=cors-server-service-rest"
       
       # Service configuration
-      - "traefik.http.services.server-service-rest.loadbalancer.server.port=8081"
+      - "traefik.http.services.server-service-rest.loadbalancer.server.port=8080"
 
       # Remove the strip prefix middleware - not needed since server expects /api/v1/server paths
 
@@ -72,12 +72,10 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
-    volumes:
-      - ../ViettelSMS_HealthCheckService/logs:/root/logs
     networks:
       - webnet
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 8083 || exit 1"]
+      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -93,7 +91,7 @@ services:
       - "traefik.http.routers.health-check-service-rest.middlewares=cors-health-check-service-rest"
 
       # Service configuration
-      - "traefik.http.services.health-check-service-rest.loadbalancer.server.port=8083"
+      - "traefik.http.services.health-check-service-rest.loadbalancer.server.port=8080"
 
       # CORS middleware
       - "traefik.http.middlewares.cors-health-check-service-rest.headers.accesscontrolalloworiginlist=*"
@@ -110,12 +108,10 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
-    volumes:
-      - ../ViettelSMS_ReportService/logs:/root/logs
     networks:
       - webnet
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 8084 || exit 1"]
+      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -131,7 +127,7 @@ services:
       - "traefik.http.routers.report-service-rest.middlewares=cors-report-service-rest"
 
       # Service configuration
-      - "traefik.http.services.report-service-rest.loadbalancer.server.port=8084"
+      - "traefik.http.services.report-service-rest.loadbalancer.server.port=8080"
 
       # CORS middleware
       - "traefik.http.middlewares.cors-report-service-rest.headers.accesscontrolalloworiginlist=*"
@@ -165,7 +161,7 @@ services:
       - webnet
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.swagger-healthcheck-ui.rule=Host(`localhost`) && PathPrefix(`/swagger/monitoring`)"
+      - "traefik.http.routers.swagger-healthcheck-ui.rule=Host(`localhost`) && PathPrefix(`/swagger/healthcheck`)"
       - "traefik.http.routers.swagger-healthcheck-ui.entrypoints=web"
       - "traefik.http.services.swagger-healthcheck-ui.loadbalancer.server.port=8080"
   swagger-report-service-ui:
