@@ -11,3 +11,8 @@
 	path = ViettelSMS_HealthCheckService
 	url = https://github.com/th1enq/ViettelSMS_HealthCheckService
 
+
+[submodule "ViettelSMS_UserService"]
+	path = ViettelSMS_UserService
+	url = https://github.com/th1enq/ViettelSMS_UserService
+
