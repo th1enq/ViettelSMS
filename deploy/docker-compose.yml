@@ -33,7 +33,7 @@ services:
     networks:
       - webnet
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -58,6 +58,86 @@ services:
       - "traefik.http.middlewares.cors-server-service-rest.headers.accesscontrolallowmethods=GET,POST,OPTIONS,PUT,DELETE"
       - "traefik.http.middlewares.cors-server-service-rest.headers.accesscontrolallowheaders=Authorization,Content-Type"
       - "traefik.http.middlewares.cors-server-service-rest.headers.addvaryheader=true"
+  user-service:
+    build:
+      context: ../ViettelSMS_UserService
+      dockerfile: Dockerfile
+    container_name: vcs_sms_user_service
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - webnet
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      
+      # REST Router
+      - "traefik.http.routers.user-service-rest.rule=PathPrefix(`/api/v1/user`)"
+      - "traefik.http.routers.user-service-rest.entrypoints=web"
+      - "traefik.http.routers.user-service-rest.service=user-service-rest"
+      - "traefik.http.routers.user-service-rest.middlewares=cors-user-service-rest"
+
+      # Service configuration
+      - "traefik.http.services.user-service-rest.loadbalancer.server.port=8080"
+
+      # Remove the strip prefix middleware - not needed since server expects /api/v1/server paths
+
+      # CORS middleware
+      - "traefik.http.middlewares.cors-user-service-rest.headers.accesscontrolalloworiginlist=*"
+      - "traefik.http.middlewares.cors-user-service-rest.headers.accesscontrolallowmethods=GET,POST,OPTIONS,PUT,DELETE"
+      - "traefik.http.middlewares.cors-user-service-rest.headers.accesscontrolallowheaders=Authorization,Content-Type"
+      - "traefik.http.middlewares.cors-user-service-rest.headers.addvaryheader=true"
+  auth-service:
+    build:
+      context: ../ViettelSMS_AuthenticationService
+      dockerfile: Dockerfile
+    container_name: vcs_sms_auth_service
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - webnet
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      
+      # REST Router
+      - "traefik.http.routers.auth-service-rest.rule=PathPrefix(`/api/v1/auth`)"
+      - "traefik.http.routers.auth-service-rest.entrypoints=web"
+      - "traefik.http.routers.auth-service-rest.service=auth-service-rest"
+      - "traefik.http.routers.auth-service-rest.middlewares=cors-auth-service-rest"
+
+      # Service configuration
+      - "traefik.http.services.auth-service-rest.loadbalancer.server.port=8080"
+
+      # Remove the strip prefix middleware - not needed since server expects /api/v1/server paths
+
+      # CORS middleware
+      - "traefik.http.middlewares.cors-auth-service-rest.headers.accesscontrolalloworiginlist=*"
+      - "traefik.http.middlewares.cors-auth-service-rest.headers.accesscontrolallowmethods=GET,POST,OPTIONS,PUT,DELETE"
+      - "traefik.http.middlewares.cors-auth-service-rest.headers.accesscontrolallowheaders=Authorization,Content-Type"
+      - "traefik.http.middlewares.cors-auth-service-rest.headers.addvaryheader=true"
   health-check-service:
     build:
       context: ../ViettelSMS_HealthCheckService
@@ -149,6 +229,36 @@ services:
       - "traefik.http.routers.swagger-server.rule=Host(`localhost`) && PathPrefix(`/swagger/server`)"
       - "traefik.http.routers.swagger-server.entrypoints=web"
       - "traefik.http.services.swagger-server.loadbalancer.server.port=8080"
+  swagger-auth-service-ui:
+    image: swaggerapi/swagger-ui
+    container_name: swagger-auth-ui
+    volumes:
+      - ../ViettelSMS_AuthenticationService/docs:/docs:ro
+    environment:
+      SWAGGER_JSON: /docs/swagger.yaml
+      BASE_URL: /swagger/auth
+    networks:
+      - webnet
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.swagger-auth-ui.rule=Host(`localhost`) && PathPrefix(`/swagger/auth`)"
+      - "traefik.http.routers.swagger-auth-ui.entrypoints=web"
+      - "traefik.http.services.swagger-auth-ui.loadbalancer.server.port=8080"
+  swagger-user-service-ui:
+    image: swaggerapi/swagger-ui
+    container_name: swagger-user-ui
+    volumes:
+      - ../ViettelSMS_UserService/docs:/docs:ro
+    environment:
+      SWAGGER_JSON: /docs/swagger.yaml
+      BASE_URL: /swagger/user
+    networks:
+      - webnet
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.swagger-user-ui.rule=Host(`localhost`) && PathPrefix(`/swagger/user`)"
+      - "traefik.http.routers.swagger-user-ui.entrypoints=web"
+      - "traefik.http.services.swagger-user-ui.loadbalancer.server.port=8080"
   swagger-healthcheck-service-ui:
     image: swaggerapi/swagger-ui
     container_name: swagger-healthcheck-ui

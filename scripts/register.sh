@@ -9,6 +9,7 @@ IPV4="$4"
 
 RESPONSE=$(curl -X POST http://$HOST_IP:80/api/v1/server/ \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: <API_KEY>" \
   -d "{
     \"server_id\": \"$SERVER_ID\",
     \"server_name\": \"$SERVER_NAME\",
