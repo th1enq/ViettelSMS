@@ -165,7 +165,7 @@ services:
       - "traefik.enable=true"
       
       # REST Router
-      - "traefik.http.routers.health-check-service-rest.rule=PathPrefix(`/api/v1/monitoring`)"
+      - "traefik.http.routers.health-check-service-rest.rule=Host(`healthcheck.localhost`) && PathPrefix(`/api/v1/monitoring`)"
       - "traefik.http.routers.health-check-service-rest.entrypoints=web"
       - "traefik.http.routers.health-check-service-rest.service=health-check-service-rest"
       - "traefik.http.routers.health-check-service-rest.middlewares=cors-health-check-service-rest"
@@ -214,81 +214,25 @@ services:
       - "traefik.http.middlewares.cors-report-service-rest.headers.accesscontrolallowmethods=GET,POST,OPTIONS,PUT,DELETE"
       - "traefik.http.middlewares.cors-report-service-rest.headers.accesscontrolallowheaders=Authorization,Content-Type"
       - "traefik.http.middlewares.cors-report-service-rest.headers.addvaryheader=true"
-  swagger-server-service-ui:
+  swagger:
     image: swaggerapi/swagger-ui
-    container_name: swagger-server-ui
-    volumes:
-      - ../ViettelSMS_ServerService/docs:/docs:ro
+    container_name: vcs_sms_swagger
+    restart: always
     environment:
-      SWAGGER_JSON: /docs/swagger.yaml
-      BASE_URL: /swagger/server
+      URLS: >
+        [
+          { "url": "http://healthcheck.localhost/swagger/doc.json", "name": "Health Check Service" },
+          { "url": "http://auth.localhost/swagger/doc.json", "name": "Authentication Service" },
+          { "url": "http://report.localhost/swagger/doc.json", "name": "Report Service" },
+          { "url": "http://user.localhost/swagger/doc.json", "name": "User Service" },
+          { "url": "http://server.localhost/swagger/doc.json", "name": "Server Service" }
+        ]
     networks:
       - webnet
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.swagger-server.rule=Host(`localhost`) && PathPrefix(`/swagger/server`)"
-      - "traefik.http.routers.swagger-server.entrypoints=web"
-      - "traefik.http.services.swagger-server.loadbalancer.server.port=8080"
-  swagger-auth-service-ui:
-    image: swaggerapi/swagger-ui
-    container_name: swagger-auth-ui
-    volumes:
-      - ../ViettelSMS_AuthenticationService/docs:/docs:ro
-    environment:
-      SWAGGER_JSON: /docs/swagger.yaml
-      BASE_URL: /swagger/auth
-    networks:
-      - webnet
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.swagger-auth-ui.rule=Host(`localhost`) && PathPrefix(`/swagger/auth`)"
-      - "traefik.http.routers.swagger-auth-ui.entrypoints=web"
-      - "traefik.http.services.swagger-auth-ui.loadbalancer.server.port=8080"
-  swagger-user-service-ui:
-    image: swaggerapi/swagger-ui
-    container_name: swagger-user-ui
-    volumes:
-      - ../ViettelSMS_UserService/docs:/docs:ro
-    environment:
-      SWAGGER_JSON: /docs/swagger.yaml
-      BASE_URL: /swagger/user
-    networks:
-      - webnet
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.swagger-user-ui.rule=Host(`localhost`) && PathPrefix(`/swagger/user`)"
-      - "traefik.http.routers.swagger-user-ui.entrypoints=web"
-      - "traefik.http.services.swagger-user-ui.loadbalancer.server.port=8080"
-  swagger-healthcheck-service-ui:
-    image: swaggerapi/swagger-ui
-    container_name: swagger-healthcheck-ui
-    volumes:
-      - ../ViettelSMS_HealthCheckService/docs:/docs:ro
-    environment:
-      SWAGGER_JSON: /docs/swagger.yaml
-      BASE_URL: /swagger/healthcheck
-    networks:
-      - webnet
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.swagger-healthcheck-ui.rule=Host(`localhost`) && PathPrefix(`/swagger/healthcheck`)"
-      - "traefik.http.routers.swagger-healthcheck-ui.entrypoints=web"
-      - "traefik.http.services.swagger-healthcheck-ui.loadbalancer.server.port=8080"
-  swagger-report-service-ui:
-    image: swaggerapi/swagger-ui
-    container_name: swagger-report-ui
-    volumes:
-      - ../ViettelSMS_ReportService/docs:/docs:ro
-    environment:
-      SWAGGER_JSON: /docs/swagger.yaml
-      BASE_URL: /swagger/report
-    networks:
-      - webnet
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.swagger-report-ui.rule=Host(`localhost`) && PathPrefix(`/swagger/report`)"
-      - "traefik.http.routers.swagger-report-ui.entrypoints=web"
-      - "traefik.http.services.swagger-report-ui.loadbalancer.server.port=8080"
+      - traefik.enable=true
+      - traefik.http.routers.swagger.rule=Host(`localhost`) && PathPrefix(`/swagger`)
+      - traefik.http.services.swagger.loadbalancer.server.port=8080
   postgres:
     image: postgres:latest
     container_name: postgres  

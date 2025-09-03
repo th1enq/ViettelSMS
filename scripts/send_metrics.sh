@@ -56,6 +56,7 @@ main() {
     # Gửi metrics đầu tiên ngay lập tức
     send_metrics
     
+    
     # Lặp vô hạn với interval time
     while true; do
         sleep $INTERVAL_TIME
