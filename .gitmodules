@@ -20,7 +20,6 @@
 	path = ViettelSMS_AuthenticationService
 	url = https://github.com/th1enq/ViettelSMS_AuthenticationService
 
-
 [submodule "ViettelSMS_WebUI"]
 	path = ViettelSMS_WebUI
 	url = https://github.com/th1enq/ViettelSMS_WebUI
