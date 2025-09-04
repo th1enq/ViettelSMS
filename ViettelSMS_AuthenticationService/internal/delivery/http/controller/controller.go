@@ -39,7 +39,7 @@ func NewController(
 // @Success 200 {object} response.APIResponse
 // @Failure 400 {object} response.APIResponse
 // @Failure 500 {object} response.APIResponse
-// @Router /api/v1/auth/login [post]
+// @Router /auth/login [post]
 func (c *Controller) Login(ctx *gin.Context) {
 	c.logger.Info("User logged in")
 
@@ -75,7 +75,7 @@ func (c *Controller) Login(ctx *gin.Context) {
 // @Success 200 {object} response.APIResponse
 // @Failure 400 {object} response.APIResponse
 // @Failure 500 {object} response.APIResponse
-// @Router /api/v1/auth/refresh [post]
+// @Router /auth/refresh [post]
 func (c *Controller) RefreshToken(ctx *gin.Context) {
 	c.logger.Info("Refreshing token")
 

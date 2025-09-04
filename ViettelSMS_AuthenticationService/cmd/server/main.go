@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 
+	_ "github.com/th1enq/ViettelSMS_AuthenticationService/docs"
 	"github.com/th1enq/ViettelSMS_AuthenticationService/internal/application"
 )
 
@@ -17,7 +18,7 @@ import (
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
-// @host localhost
+// @host auth.localhost
 func main() {
 	app, err := application.InitApp()
 	if err != nil {

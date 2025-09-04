@@ -46,7 +46,7 @@ func (s *server) RegisterRoutes() *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"http://auth.localhost"},
+		AllowOrigins: []string{"*"},
 		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders: []string{"Origin", "Content-Type", "Authorization"},
 	}))
@@ -57,9 +57,7 @@ func (s *server) RegisterRoutes() *gin.Engine {
 
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	v1 := router.Group("/api/v1")
-
-	auth := v1.Group("/auth")
+	auth := router.Group("/auth")
 	{
 		auth.POST("/login", s.controller.Login)
 		auth.POST("/refresh/{user_id}", s.controller.RefreshToken)

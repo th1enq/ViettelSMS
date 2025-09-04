@@ -29,7 +29,7 @@ definitions:
       message:
         type: string
     type: object
-host: localhost
+host: auth.localhost
 info:
   contact:
     email: support@swagger.io
@@ -42,7 +42,7 @@ info:
   title: Server Management Service
   version: "1.0"
 paths:
-  /api/v1/auth/login:
+  /auth/login:
     post:
       consumes:
       - application/json
@@ -72,7 +72,7 @@ paths:
       summary: Login
       tags:
       - auth
-  /api/v1/auth/refresh:
+  /auth/refresh:
     post:
       consumes:
       - application/json
