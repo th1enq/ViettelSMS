@@ -7,7 +7,7 @@ OS="Linux"
 INTERVAL_TIME="$3"
 IPV4="$4"
 
-RESPONSE=$(curl -X POST http://$HOST_IP:80/api/v1/server/ \
+RESPONSE=$(curl -X POST http://$HOST_IP:80/server/ \
   -H "Content-Type: application/json" \
   -H "X-API-Key: <API_KEY>" \
   -d "{

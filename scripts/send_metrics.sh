@@ -29,7 +29,7 @@ send_metrics() {
     
     echo "Gửi metrics"
 
-    RESPONSE=$(curl -s -X POST http://$HOST_IP:80/api/v1/monitoring \
+    RESPONSE=$(curl -s -X POST http://$HOST_IP:80/healthcheck/monitoring \
         -H "Content-Type: application/json" \
         -d "{
             \"server_id\": \"$SERVER_ID\",

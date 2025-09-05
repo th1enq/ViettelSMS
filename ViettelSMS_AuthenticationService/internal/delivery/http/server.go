@@ -55,10 +55,9 @@ func (s *server) RegisterRoutes() *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
 	})
 
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
 	auth := router.Group("/auth")
 	{
+		auth.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 		auth.POST("/login", s.controller.Login)
 		auth.POST("/refresh/{user_id}", s.controller.RefreshToken)
 	}

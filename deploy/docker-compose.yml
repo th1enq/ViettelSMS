@@ -43,7 +43,7 @@ services:
       - "traefik.enable=true"
       
       # REST Router
-      - "traefik.http.routers.server-service-rest.rule=Host(`server.localhost`)"
+      - "traefik.http.routers.server-service-rest.rule=PathPrefix(`/api/server`)"
       - "traefik.http.routers.server-service-rest.entrypoints=web"
       - "traefik.http.routers.server-service-rest.service=server-service-rest"
       - "traefik.http.routers.server-service-rest.middlewares=cors-server-service-rest"
@@ -51,7 +51,7 @@ services:
       # Service configuration
       - "traefik.http.services.server-service-rest.loadbalancer.server.port=8080"
 
-      # Remove the strip prefix middleware - not needed since server expects /api/v1/server paths
+      - "traefik.http.middlewares.strip-api-prefix.stripprefix.prefixes=/api"
 
       # CORS middleware
       - "traefik.http.middlewares.cors-server-service-rest.headers.accesscontrolalloworiginlist=*"
@@ -81,7 +81,7 @@ services:
       - "traefik.enable=true"
       
       # REST Router
-      - "traefik.http.routers.user-service-rest.rule=Host(`user.localhost`)"
+      - "traefik.http.routers.user-service-rest.rule=PathPrefix(`/api/user`)"
       - "traefik.http.routers.user-service-rest.entrypoints=web"
       - "traefik.http.routers.user-service-rest.service=user-service-rest"
       - "traefik.http.routers.user-service-rest.middlewares=cors-user-service-rest"
@@ -89,7 +89,8 @@ services:
       # Service configuration
       - "traefik.http.services.user-service-rest.loadbalancer.server.port=8080"
 
-      # Remove the strip prefix middleware - not needed since server expects /api/v1/server paths
+      - "traefik.http.middlewares.strip-api-prefix.stripprefix.prefixes=/api"
+
 
       # CORS middleware
       - "traefik.http.middlewares.cors-user-service-rest.headers.accesscontrolalloworiginlist=*"
@@ -123,21 +124,17 @@ services:
       - "traefik.enable=true"
       
       # REST Router for auth subdomain
-      - "traefik.http.routers.auth-service-rest.rule=Host(`auth.localhost`)"
+      - "traefik.http.routers.auth-service-rest.rule=PathPrefix(`/api/auth`)"
       - "traefik.http.routers.auth-service-rest.entrypoints=web"
       - "traefik.http.routers.auth-service-rest.service=auth-service-rest"
       - "traefik.http.routers.auth-service-rest.middlewares=cors-auth-service-rest"
-      
-      # REST Router for localhost with path prefix
-      - "traefik.http.routers.auth-service-localhost.rule=Host(`localhost`) && PathPrefix(`/auth`)"
-      - "traefik.http.routers.auth-service-localhost.entrypoints=web"
-      - "traefik.http.routers.auth-service-localhost.service=auth-service-rest"
-      - "traefik.http.routers.auth-service-localhost.middlewares=cors-auth-service-rest"
 
       # Service configuration
       - "traefik.http.services.auth-service-rest.loadbalancer.server.port=8080"
 
       # Remove the strip prefix middleware - not needed since server expects /api/v1/server paths
+      - "traefik.http.middlewares.strip-api-prefix.stripprefix.prefixes=/api"
+
 
       # CORS middleware
       - "traefik.http.middlewares.cors-auth-service-rest.headers.accesscontrolalloworiginlist=*"
@@ -171,13 +168,15 @@ services:
       - "traefik.enable=true"
       
       # REST Router
-      - "traefik.http.routers.health-check-service-rest.rule=Host(`healthcheck.localhost`)"
+      - "traefik.http.routers.health-check-service-rest.rule=PathPrefix(`/api/healthcheck`)"
       - "traefik.http.routers.health-check-service-rest.entrypoints=web"
       - "traefik.http.routers.health-check-service-rest.service=health-check-service-rest"
       - "traefik.http.routers.health-check-service-rest.middlewares=cors-health-check-service-rest"
 
       # Service configuration
       - "traefik.http.services.health-check-service-rest.loadbalancer.server.port=8080"
+      - "traefik.http.middlewares.strip-api-prefix.stripprefix.prefixes=/api"
+
 
       # CORS middleware
       - "traefik.http.middlewares.cors-health-check-service-rest.headers.accesscontrolalloworiginlist=*"
@@ -207,13 +206,15 @@ services:
       - "traefik.enable=true"
       
       # REST Router
-      - "traefik.http.routers.report-service-rest.rule=Host(`report.localhost`)"
+      - "traefik.http.routers.report-service-rest.rule=PathPrefix(`/api/report`)"
       - "traefik.http.routers.report-service-rest.entrypoints=web"
       - "traefik.http.routers.report-service-rest.service=report-service-rest"
       - "traefik.http.routers.report-service-rest.middlewares=cors-report-service-rest"
 
       # Service configuration
       - "traefik.http.services.report-service-rest.loadbalancer.server.port=8080"
+      - "traefik.http.middlewares.strip-api-prefix.stripprefix.prefixes=/api"
+
 
       # CORS middleware
       - "traefik.http.middlewares.cors-report-service-rest.headers.accesscontrolalloworiginlist=*"
@@ -228,11 +229,11 @@ services:
       BASE_URL: /swagger
       URLS: >
         [
-          { "url": "http://healthcheck.localhost/swagger/doc.json", "name": "Health Check Service" },
-          { "url": "http://server.localhost/swagger/doc.json", "name": "Server Service" },
-          { "url": "http://user.localhost/swagger/doc.json", "name": "User Service" },
-          { "url": "http://auth.localhost/swagger/doc.json", "name": "Auth Service" },
-          { "url": "http://report.localhost/swagger/doc.json", "name": "Report Service" }
+          { "url": "http://localhost/api/healthcheck/swagger/doc.json", "name": "Health Check Service" },
+          { "url": "http://localhost/api/server/swagger/doc.json", "name": "Server Service" },
+          { "url": "http://localhost/api/user/swagger/doc.json", "name": "User Service" },
+          { "url": "http://localhost/api/auth/swagger/doc.json", "name": "Auth Service" },
+          { "url": "http://localhost/api/report/swagger/doc.json", "name": "Report Service" }
         ]
     networks:
       - webnet
